@@ -1,39 +1,72 @@
 import React from 'react';
 import createDataContext from './createDataContext';
+import jsonServer from "../api/jsonServer";
 
 const blogReducer = (state, action) => {
     switch (action.type) {
+        case 'get_blogposts':
+            return action.payload;
         case 'delete_blogpost':
             return state.filter((blogPost) => blogPost.id !== action.payload);
-        case 'add_blogpost':
-            return [
-                ...state,
-                {
-                    id: Math.floor(Math.random() * 9999),
-                    title: action.payload.title,
-                    content: action.payload.content,
+        case 'edit_blogpost':
+            return state.map((blogPost) => {
+                if (blogPost.id === action.payload.id) {
+                    return action.payload;
                 }
-            ]
+
+                return blogPost;
+            })
     }
 
     return state;
 }
 
+const getBlogPosts = dispatch => {
+    return async () => {
+        const response = await jsonServer.get('/blogposts');
+
+        dispatch({type: 'get_blogposts', payload: response.data});
+    };
+};
+
 const addBlogPost = (dispatch) => {
-    return (title, content, cb) => {
-        dispatch({type: 'add_blogpost', payload: {title: title, content: content}});
-        cb();
+    return async (title, content, cb) => {
+        await jsonServer.post(
+            '/blogposts',
+            {title, content}
+        );
+
+        if (cb) {
+            cb();
+        }
     }
 }
 
 const deleteBlogPost = (dispatch) => {
-    return (id) => {
+    return async (id) => {
+        await jsonServer.delete(`/blogposts/${id}`);
         dispatch({type: 'delete_blogpost', payload: id});
     }
 }
 
+const editBlogPost = dispatch => {
+    return async (id, title, content, cb) => {
+        await jsonServer.put(
+            `/blogposts/${id}`,
+            {title: title, content: content}
+        );
+        // dispatch({
+        //     type: 'edit_blogpost',
+        //     payload: {id: id, title: title, content: content}
+        // });
+        if (cb) {
+            cb();
+        }
+    };
+};
+
 export const {Context, Provider} = createDataContext(
     blogReducer,
-    {addBlogPost, deleteBlogPost},
-    [{title: 'Test POST', content: "test content", id: 1}]
+    {addBlogPost, deleteBlogPost, editBlogPost, getBlogPosts},
+    []
 );
